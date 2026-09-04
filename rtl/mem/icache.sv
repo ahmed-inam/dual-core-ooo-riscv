@@ -7,6 +7,8 @@ module icache
   input  logic  clk,
   input  logic  rst_n,
 
+  input  logic  line_ram_only_i = 1'b0,   // 1: a fetch outside RAM faults instead of requesting a line
+
   input  logic  req,
   output logic  gnt,
   input  word_t addr,
@@ -121,12 +123,13 @@ module icache
       M_IDLE: begin
         if (gnt && !s0_hit) begin
           miss_pend_d  = 1'b1;
-          fill_alloc_d = !flush;
+          fill_alloc_d = !flush && !(line_ram_only_i && !is_ram(addr));
+          fill_err_d   = line_ram_only_i && !is_ram(addr);   // a fetch outside RAM faults; no line request goes out
           miss_addr_d = addr;
           miss_idx_d  = s0_idx;
           miss_tag_d  = s0_tag;
           miss_way_d  = s0_victim;
-          mstate_d    = M_REQ;
+          mstate_d    = (line_ram_only_i && !is_ram(addr)) ? M_FILL : M_REQ;
         end
       end
       M_REQ:  if (line_gnt)    mstate_d = M_WAIT;

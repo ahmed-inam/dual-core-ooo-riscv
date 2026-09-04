@@ -8,6 +8,8 @@ module dcache
   input  logic  clk,
   input  logic  rst_n,
 
+  input  logic  line_ram_only_i = 1'b0,   // 1: a line may only be filled from RAM, anything else faults
+
   input  logic       snp_valid,
   input  word_t      snp_addr,
   input  coh_snoop_e snp_type,
@@ -172,7 +174,8 @@ module dcache
     D_UPG_WAIT,    // wait for it to complete, then the line is writable
     D_ACQ_REQ,     // present GetS (load miss) or GetM (store miss)
     D_ACQ_WAIT,    // wait for the ordered completion + the shared-bit
-    D_UPG_DONE
+    D_UPG_DONE,
+    D_BAD          // cacheable access outside RAM: fault it, never fill it
   } dstate_e;
 
   dstate_e dstate_q, dstate_d;
@@ -206,9 +209,12 @@ module dcache
   assign flush_start = flush && !flush_ack_q;
   logic wintent;
   assign wintent = we || is_lr;
+  logic s0_snp_inv;   // this cycle's snoop invalidates the very line an Upgrade would claim
+  assign s0_snp_inv = snp_valid && sn_hit && sn_act.inv
+                      && (sn_idx == s0_idx) && (sn_way == s0_tagp1);
   logic upg_needed;
   assign upg_needed = req && wintent && !s0_mmio && s0_tagp
-                      && !can_write(tag_q[s0_idx][s0_tagp1].state);
+                      && !can_write(tag_q[s0_idx][s0_tagp1].state) && !s0_snp_inv;
 
   logic upg_pending;
   assign upg_pending = (dstate_q == D_UPG_REQ) || (dstate_q == D_UPG_WAIT);
@@ -402,6 +408,8 @@ module dcache
           mshr_wdata_d = wdata;
           mshr_kill_d  = kill;
           dstate_d     = D_MMIO_REQ;
+        end else if (gnt && !s0_hit && line_ram_only_i && !is_ram(addr)) begin
+          dstate_d     = D_BAD;
         end else if (gnt && !s0_hit) begin
           mshr_addr_d  = addr;
           mshr_idx_d   = s0_idx;
@@ -490,6 +498,7 @@ module dcache
         flush_ack_d = 1'b1;
         dstate_d    = D_IDLE;
       end
+      D_BAD: dstate_d = D_IDLE;
 
       default: dstate_d = D_IDLE;
     endcase
@@ -602,8 +611,8 @@ module dcache
   assign mmio_resp = (dstate_q == D_MMIO_WAIT) && mmio_rvalid;
   assign resp_woff = fill_resp ? word_off(mshr_addr_q) : s1_woff_q;
 
-  assign rvalid = (s1_valid_q && s1_hit_q) || fill_resp || mmio_resp;
-  assign rerr   = (fill_resp && fill_err_q) || (mmio_resp && mmio_rerr);
+  assign rvalid = (s1_valid_q && s1_hit_q) || fill_resp || mmio_resp || (dstate_q == D_BAD);
+  assign rerr   = (fill_resp && fill_err_q) || (mmio_resp && mmio_rerr) || (dstate_q == D_BAD);
   assign rdata  = mmio_resp ? mmio_rdata
                 : fill_resp ? fill_merged[resp_woff*32 +: 32]
                             : dat_rdata[resp_woff*32 +: 32];

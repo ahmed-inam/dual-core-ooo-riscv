@@ -180,6 +180,7 @@ module cluster
 
     icache u_ic (
       .clk, .rst_n,
+      .line_ram_only_i(1'b1),   // the crossbar sends every non-RAM prefix to word-only or nowhere
       .req(ireq), .gnt(ignt), .addr(iaddr), .rvalid(irvalid), .rdata(irdata),
       .rerr(irerr),
       .rdata_line(irdata_line), .rdata_woff(), .rdata_wmask(iwmask),
@@ -200,6 +201,7 @@ module cluster
 
     dcache u_dc (
       .clk, .rst_n,
+      .line_ram_only_i(1'b1),
       .snp_valid(coh_snp_valid[h]), .snp_addr(coh_snp_addr), .snp_type(coh_snp_type),
       .snp_ack(coh_snp_ack[h]), .snp_rsp(coh_snp_rsp[h]),
       .rsv_clear_o(dc_rsv_clear),

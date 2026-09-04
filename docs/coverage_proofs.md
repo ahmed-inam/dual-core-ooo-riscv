@@ -369,7 +369,7 @@ S6-3.6 lesson, applied to a proof instead of a gate roster.
   * `cp_sr.reserved_o`, `cp_so.reserved_o` -- the reserved state encoding.
     `coherence_pkg` defines four line states and `mesi_ctrl.sv:89` marks
     `LINE_O` unreachable outright: *"LINE_O is unreachable: S6-1 rules MESI"*.
-  * `cp_r.putm_never_issued` -- an `ignore_bin` by design. `dcache.sv:18`
+  * `cp_r.putm_never_issued` -- an `ignore_bin` by design. `dcache.sv:20`
     routes fills and writebacks over the line port to memory, so `coh_req_type`
     is only ever UPGRADE / GETM / GETS and `REQ_PUTM` is never issued.
     Independently confirmed by line coverage: `mesi_ctrl.sv:80` and
@@ -737,7 +737,7 @@ were neither hit nor proven.
 **THE CAUSE, and it is worse than "not line-qualified":**
 
     lrsc_unit.sv:52   cnt_d[h] = '0  when snoop_clear[h] or trap_clear[h]
-    cluster.sv:246     snp_clr[h] = dc_rsv_clear   (dcache: snp_valid && sn_act.rsv_clear)
+    cluster.sv:247     snp_clr[h] = dc_rsv_clear   (dcache: snp_valid && sn_act.rsv_clear)
 
 Neither expression compares an address -- and `mesi_ctrl` raises `rsv_clear`
 from **row I as well** (`:131`, *"nothing to invalidate, but [rc] still applies:
@@ -794,7 +794,7 @@ park loop. The wait is the barrier shape `crt0_multihart` already uses and that
     identical at +DELAY 0 / 10 / 20 / 40 -- CHECKED is 266 at every one, so the
     program is deterministic rather than winning a race.
 
-**Spurious loss is architecturally legal** (`cluster.sv:248` says so), so the
+**Spurious loss is architecturally legal** (`cluster.sv:249` says so), so the
 missing line qualification is a PRECISION limit and not a correctness defect.
 It stays recorded rather than fixed.
 
@@ -829,7 +829,7 @@ criterion was not met.
 
 ### `cg_snoop` -- `x_atomic_req.atomic_x_gets`
 
-An ATOMIC request that is a GetS. `dcache.sv:202`:
+An ATOMIC request that is a GetS. `dcache.sv:211`:
 
     assign wintent = we || is_lr;
 
@@ -1040,8 +1040,8 @@ unclassified citation into a pass.
 rtl/mem/axi4/axi4_pkg.sv:33        norec       typedef enum logic [1:0] {
 rtl/mem/axi_adapter.sv:49          never       assign axlen = word_q ? 8'd0 : 8'(BEATS - 1);
 rtl/common/branch_unit.sv:49       norec       assign target_misaligned = taken && (target[1:0] != 2'b00);
-rtl/ooo/cluster.sv:246             norec       assign snp_clr[h] = dc_rsv_clear;
-rtl/ooo/cluster.sv:248             norec       // Losing a reservation spuriously is legal; keeping one across a trap
+rtl/ooo/cluster.sv:247             norec       assign snp_clr[h] = dc_rsv_clear;
+rtl/ooo/cluster.sv:249             norec       // Losing a reservation spuriously is legal; keeping one across a trap
 rtl/mem/coherence_mgr.sv:144       never       if (req_type[pick] == REQ_PUTM) begin
 rtl/mem/coherence_mgr.sv:148       norec       // Snoop everyone except the requester.
 rtl/mem/coherence_mgr.sv:161       guard       if (snp_rsp[h] == RSP_TtoB || snp_rsp[h] == RSP_TtoN) dty_d = 1'b1;
@@ -1056,8 +1056,8 @@ tb/uvm/cov/cov_coherence.sv:259    norec       RSP_TtoB, RSP_TtoN, RSP_TtoT: ret
 tb/uvm/cov/cov_isa.sv:557          norec       if (a >= 32'h8000_3000) return 1;                     // data
 tb/uvm/cov/cov_lrsc.sv:170         norec       protected function int unsigned dist_bucket(longint unsigned d);
 rtl/common/csr_regfile.sv:113      opaque      function automatic word_t warl_mstatus(word_t v);
-rtl/mem/dcache.sv:18               norec       // Permission traffic only; fills and writebacks ride the line port to
-rtl/mem/dcache.sv:202              norec       assign wintent = we || is_lr;
+rtl/mem/dcache.sv:20               norec           // Permission traffic only; fills and writebacks ride the line port to
+rtl/mem/dcache.sv:211              norec           assign wintent = we || is_lr;
 rtl/mem/lrsc_unit.sv:42            norec       // An SC in the backoff phase fails: the retry loop must re-execute it
 rtl/mem/lrsc_unit.sv:43            norec       assign sc_success[h] = sc_valid[h] && rsv_valid[h]
 rtl/mem/lrsc_unit.sv:52            guard       cnt_d[h] = '0;

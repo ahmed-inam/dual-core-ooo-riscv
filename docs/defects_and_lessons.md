@@ -488,6 +488,48 @@ with the shape it belongs to and the fix that landed with it.
   latency model and reported 120 with the counter at 128 and zero Spike
   mismatches. Fix: each hart waits, bounded, until the counter reaches
   `ITERS * NUM_HARTS` before returning, so the verdict is the final count.
+- **An Upgrade decided in the cycle its line was taken (class 7).** The
+  D-cache picks the Upgrade path from `upg_needed` in `D_IDLE`, and a snoop
+  that invalidates the same S line in that same cycle is applied to the tag at
+  once, but the `upg_lost` latch that turns a lost Upgrade into a fill listens
+  only while the Upgrade is already pending. So a store or LR whose request
+  first meets an idle cache in the very cycle the peer's GetM or Upgrade snoop
+  lands went out as an Upgrade for a line the cache no longer held, and on
+  completion the cache set the way to M over the stale data array. The peer's
+  words in that line were lost; the peer read its own counter stepping back
+  after our next snoop response or writeback carried the stale line. Reached
+  by two harts counting in different words of one line at every memory
+  latency (`upg_race`, `fence_race`, `bytes_race`; the byte-lane program fails
+  inside 1300 cycles), and never by the committed gates because their
+  contended lines are LR/SC words that the SC path serialises. Fix:
+  `upg_needed` is masked by a same-cycle invalidating snoop on the requested
+  way, so the request re-arbitrates next cycle as an ordinary GetM miss. Why
+  nothing saw it: the SWMR check reads the two tag arrays only when both
+  caches and the ordering point are idle, and at that instant one M copy over
+  stale data looks exactly like a legal M copy.
+- **A line fill to an address that is not memory (class 6, the address
+  class).** The caches treated every address outside the CLINT window as
+  cacheable and asked the crossbar for a four-beat line, and the crossbar
+  routes the whole low prefix to the word-granular CLINT slave, which can
+  answer one beat. A wrong-path load reaches that path from a correct program:
+  a pointer that is usually valid and once null, guarded by a branch the
+  predictor has learned, issues its load with address zero before the branch
+  resolves, and the burst ended the simulation at the slave's assertion (in
+  silicon the slave would return one beat against a four-beat burst, an AXI
+  violation). A jump or an architectural load to a low unmapped address did
+  the same, where the design raises an access fault for every other unmapped
+  prefix. Fix: `mem_pkg::is_ram` names the one region a line may target;
+  under the `line_ram_only_i` input, which only `cluster.sv` ties high because
+  only its crossbar has that decode, `dcache.sv` answers a cacheable access
+  outside it with a load access fault from a new `D_BAD` state and never
+  fills, and `icache.sv` returns the fetch as an instruction access fault
+  without a line request. The single-core system keeps its low-address map.
+  Stores to such addresses are dropped, as a faulted store fill already is.
+  Tests:
+  `null_spec` (the guarded null pointer, dual-hart) and `badjump` (jump, load
+  and store to low and high unmapped addresses with cause and tval checks).
+  Why nothing saw it: every committed program keeps its pointers in RAM, and
+  a wrong-path address only exists between issue and squash.
 - **The instruments (class 4).** The retirement scoreboard patched Spike with
   the DUT's load value whenever only the load differed, up to fifty times, even
   when the word the DUT read agreed with the reference. It now defers only when

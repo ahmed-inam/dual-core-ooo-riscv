@@ -102,4 +102,8 @@ package mem_pkg;
     return (addr & CLINT_MASK) == CLINT_BASE;
   endfunction
 
+  function automatic logic is_ram(input logic [31:0] addr);   // the only region a line fill may target
+    return addr[31:28] == RAM_BASE[31:28];
+  endfunction
+
 endpackage
