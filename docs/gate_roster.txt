@@ -1,0 +1,211 @@
+# Gate roster. 92 gates. EXPECT_GATES=92 makes a vanished or added gate a
+# FAILURE rather than a silent shift in the total.
+#
+# 91 -> 92: tb_issue_stub removed with the dead module it tested;
+#   tb_dcache_upg_race and tb_dcache_flush_snoop added, one per D-cache race
+#   (docs/defects_and_lessons.md section 9).
+#
+# [B4] 86 -> 87: uvm_lrsc_diffline -- an LR on one line while a window is open
+# on ANOTHER, which is the S6-6.9 anti-hogging rule's DISCRIMINATING half and
+# had executed 0 times in 3,366 LR events. Its first run found two checkers that
+# fire on a correct design: sb_coherence's new writeback check (an address-domain
+# mismatch) and check_sc_legality, which called a legitimate different-line SC
+# failure an atomicity violation -- an error ID this battery gates on.
+#
+# 87 -> 88: uvm_docs -- scripts/docs_audit.sh --no-coverage. Every
+#   figure a document DECLARES in its CURRENT FIGURES block, diffed against the
+#   artefact that owns it. It existed and passed for a whole stage WITHOUT BEING
+#   GATED, so it only ever ran when somebody remembered audit_all.sh -- the same
+#   standing this file had when it drifted to 85 entries against EXPECT_GATES=84.
+#   --no-coverage because the battery's union is smaller than cov_sweep.sh's, so
+#   bins/hit/unhit would not match here and the gate would cry wolf; cov_sweep.sh
+#   runs the full audit. Same split as uvm_cites --anchors-only.
+#
+# 84 -> 86: uvm_cites and uvm_checkers, both source-level and both
+# under a second. They are here because each closed a divergence the repository
+# could not see from either side, which is the third and fourth instance of that
+# shape after the gate list vs the sweep list and COVERAGE_PROOFS.md's
+# accounting table vs its own measurement.
+#
+#   uvm_cites     scripts/cite_audit.sh --anchors-only. Every RTL line
+#                 COVERAGE_PROOFS.md cites must still carry the code the proof
+#                 quotes. TWELVE of 37 citations had drifted, by up to 145
+#                 lines, and the hostile audit whose stated job was checking
+#                 every proof against the RTL it cites missed all twelve --
+#                 because it re-derived each claim instead of following the
+#                 citation. Anchors only in the battery; cov_sweep.sh also runs
+#                 the coverage half, which is unsound against a reduced program
+#                 set for the same reason uvm_proofs is --hit-only here.
+#   uvm_checkers  scripts/checker_audit.sh. Every uvm_error/fatal/warning site
+#                 must be CLASSIFIED in docs/checker_roster.txt. The inventory
+#                 said 117 sites and the source has 141 -- 20% stale, and step
+#                 7's entire scope argument rested on it. The roster also holds
+#                 the split that was recorded as owed: 32 DESIGN sites over 23
+#                 mechanisms, 6 of them ever shown able to fail.
+#
+# [7] 83 -> 84: asm_fresh -- every asm/*.hex newer than its source. Nothing in
+# the flow rebuilds a program's hex from its .S, so an edited program runs as its
+# OLD self and passes its own self-check while doing it. Eighth instance of the
+# stale-artefact family; costs under a second.
+#
+# [6] 82 -> 83: step6_latency -- the seven cluster/UVM overlaps at four memory
+# latencies, UVM_BUILD.md section 5's first acceptance bullet. Also asserts the
+# four regimes actually differed (maxima 4..5 / 23..27 / 49..52 / 101..105).
+#
+# [4d] 81 -> 82: uvm_lrsc_conflict -- a peer touching the RESERVED LINE with
+# ordinary accesses while the window is open. coherence_mgr.sv:204's D3
+# protection block is 0 taken of 3,714,104 evaluations and stress.hex cannot
+# reach it. It also caught a bug in the new line-qualified snoop counter: the
+# caches see MASKED addresses and the LSQ holds unmasked ones, the trap
+# cluster.sv:251 documents.
+#
+# [4d] 80 -> 81: uvm_proofs -- every bin COVERAGE_PROOFS.md calls unreachable
+# must still be UNHIT. The document and the measurement were maintained
+# separately and drifted: the accounting table summed to 142 against a measured
+# 129, and one proof was outright false (upgrade_x_s_x_m, claimed impossible by
+# SWMR, hit 4 times). It checks one direction only, because hit/unhit is a
+# property of a union and the battery drives fewer programs than cov_sweep.sh --
+# the full two-way audit runs there.
+#
+# [4d] 79 -> 80: uvm_lrsc_qtrap -- a trap as the SOLE cause of a reservation
+# kill (cg_window.cp_kill.trap, x_out_kill.failed_x_trap). Separate from
+# uvm_lrsc_trap because that program owns cp_kill.both, and a single program
+# cannot own both cells.
+#
+# [4c] 73 -> 77: excl, satviol, hazx, lrscx.
+#
+# [4c] 68 -> 73: rasx, mdcorner, memshape, axierr, irq_ctx.
+#
+# [4c] 66 -> 68: uvm_misalign (execute-time exceptions -- rob.sv:329's comp_exc
+# arm read 0 of 245,731 before it) and uvm_csrprobe (every implemented CSR,
+# gated on its KNOWN COUNT of 82 accesses because it has no reference: it reads
+# free-running counters, which Spike counts differently by construction).
+#
+# [4c] 64 -> 66: uvm_min_sl (the memory-order VIOLATION witness, and what
+# validated cg_commit_slot's slot-1 bin) and uvm_bins (the declared-vs-reported
+# BIN COUNT audit -- the third check, and the only one that can see a coverpoint
+# whose bins did not expand; nine were in that state, each having passed the
+# admission rule cleanly). uvm_bins needs no rebuild and no extra run: it reads
+# the coverage.dat the uvm gates already wrote.
+#
+# [9] 56 -> 64: the eight uvm_* gates. Until they existed the battery could not
+# see the UVM environment at all -- mutation m4 re-injected the trp_clr defect
+# and every one of the 56 stayed green, because the test that catches it
+# (cpu_lrsc_trap_test) was not among them. Step 7 grades mutations BY this
+# battery, so that hole made "missed" results meaningless.
+#
+# Each uvm_* gate asks `mismatches == 0` AND `CHECKED >= floor`, read from
+# obj_uvm/verdict.txt -- NOT `UVM_ERROR : 0`, because these tests correctly
+# report errors about STIMULUS (no atomics in this program, too few coherence
+# transactions in that one) and gating on those would fail correct runs and
+# invite silencing the anti-vacuous checkers.
+# 88 -> 89: uvm_criteria -- scripts/gate_criteria_check.sh, both
+#   modes. The copy check existed and was ungated; --coverage is new and is the
+#   JOIN this repository never performed: every DESIGN mechanism in
+#   docs/checker_roster.txt must be reachable by some gate criterion. Two
+#   identical allowlists can both be incomplete, and they were -- 14 of 24
+#   mechanisms could fire without failing anything, proven under m6.
+#   EXPECT_BLIND=2 is the ratchet; the two are the checkers that are not silent
+#   on a known-good run.
+# 89 -> 90: uvm_ral -- cpu_ral_test on csrprobe. A uvm_reg model for
+#   the machine CSRs, read through a BOUND back door (csr_probe_if) because
+#   RISC-V CSRs are not memory-mapped and have no front door at all. Checks
+#   reset values, read-only field policy and mirror-vs-hardware. mstatus.mpp is
+#   declared RO, so this is a second witness to m13 that shares no code with
+#   csrprobe.S's own verdict.
+# 90 -> 91: uvm_random -- two constrained-random programs from
+#   scripts/gen_random_prog.py, assembled and compared against Spike. The other
+#   method: every other bin in this project was closed by hand-written assembly.
+#   Two seeds is a rot detector, not a sweep; scripts/run_random.sh is the sweep.
+  asm_fresh:ok
+  bench_par:ok
+  cfg_check:ok
+  ctest_rvfi_ooo:ok
+  ctest_suite:ok
+  litmus:ok
+  lrsc_arch:ok
+  mesi_xcells:ok
+  ooo_irq_smc:ok
+  rvfi_dual:ok
+  rvfi_sys_ooo:ok
+  step6_latency:ok
+  stress_lrsc:ok
+  swmr_cluster:ok
+  sys_ooo:ok
+  tb_axi4_coreaxi_slv:ok
+  tb_axi4_word_slv:ok
+  tb_axi_path:ok
+  tb_bridge:ok
+  tb_btb:ok
+  tb_clint:ok
+  tb_coherence_mgr:ok
+  tb_coherence_pkg:ok
+  tb_core_ooo:ok
+  tb_dcache:ok
+  tb_dcache_acquire:ok
+  tb_dcache_flush_snoop:ok
+  tb_dcache_snoop:ok
+  tb_dcache_swmr:ok
+  tb_dcache_upg_race:ok
+  tb_decode_lrsc:ok
+  tb_dual_ooo:ok
+  tb_fetch_queue:ok
+  tb_freelist:ok
+  tb_gshare:ok
+  tb_hpm0:ok
+  tb_icache:ok
+  tb_issue_queue:ok
+  tb_lrsc_path:ok
+  tb_lrsc_unit:ok
+  tb_lsq:ok
+  tb_lsq_snoop:ok
+  tb_merge_dcoh:ok
+  tb_merges:ok
+  tb_mesi_coh:ok
+  tb_mesi_ctrl:ok
+  tb_mmio_decode:ok
+  tb_perf:ok
+  tb_prf:ok
+  tb_race_directed:ok
+  tb_ras:ok
+  tb_rename:ok
+  tb_rob:ok
+  tb_sim_mem:ok
+  tb_snp_store_race:ok
+  tb_sram:ok
+  tb_sram_1r1w:ok
+  tb_viol_merge:ok
+  uvm_axierr:ok
+  uvm_base:ok
+  uvm_bins:ok
+  uvm_checkers:ok
+  uvm_cites:ok
+  uvm_contend:ok
+  uvm_criteria:ok
+  uvm_csrprobe:ok
+  uvm_docs:ok
+  uvm_excl:ok
+  uvm_fencefull:ok
+  uvm_hazx:ok
+  uvm_irq_ctx:ok
+  uvm_lrsc_conflict:ok
+  uvm_lrsc_diffline:ok
+  uvm_lrsc_qtrap:ok
+  uvm_lrsc_trap:ok
+  uvm_lrscx:ok
+  uvm_mdcorner:ok
+  uvm_memconv:ok
+  uvm_memshape:ok
+  uvm_min_sl:ok
+  uvm_misalign:ok
+  uvm_proofs:ok
+  uvm_ral:ok
+  uvm_random:ok
+  uvm_rasx:ok
+  uvm_saturate:ok
+  uvm_satviol:ok
+  uvm_share:ok
+  uvm_stress:ok
+  uvm_timer_irq:ok
+  uvm_wstall:ok
+  xbar:ok

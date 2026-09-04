@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# uvmv -- verilate a UVM testbench with the flags that are known to work.
+#
+#   uvmv --top-module tb_top tb/uvm/pkg/cpu_tb_pkg.sv rtl/ooo/cluster.sv ...
+#
+# Everything you pass is forwarded to verilator. What this adds, and why:
+#
+#   --vpi                     Verilator's VPI implementation. uvm_dpi.cc calls
+#                             vpi_handle_by_name / vpi_get_value / vpi_put_value
+#                             / vpi_register_cb. Without --vpi the model builds
+#                             with VM_VPI=0 and all of them are undefined at link.
+#
+#   $UVM_HOME/src/dpi/uvm_dpi.cc
+#                             supplies uvm_hdl_read/deposit/check_path,
+#                             uvm_re_compexecfree/deglobbed/buffer/free, and
+#                             uvm_dpi_get_tool_name_c/version_c/next_arg_c.
+#                             uvm_pkg declares these as `import "DPI-C"`
+#                             UNCONDITIONALLY, so Verilator generates wrappers
+#                             for them whether or not your testbench calls one.
+#                             They must resolve at link time. Having no register
+#                             bus does not exempt you.
+#
+#   -DVERILATOR               routes uvm_dpi.cc to uvm_hdl_verilator.c rather
+#                             than the generic VPI backdoor implementation.
+#
+# Drop any one and you get ~2 minutes of clean compilation followed by a wall of
+# `undefined reference`, which looks like a code error and is not.
+#
+# Fallback if the DPI layer ever becomes a problem: +define+UVM_NO_DPI uses UVM's
+# SystemVerilog regex fallback and disables the HDL backdoor. Acceptable for this
+# DUT (no external register bus, nothing calls uvm_hdl_*), but try the real link
+# first -- UVM_NO_DPI also changes regex semantics.
+set -euo pipefail
+
+UVM_SRC="${UVM_HOME:-/opt/uvm}/src"
+JOBS="${JOBS:-$(nproc)}"
+
+if [[ ! -f "$UVM_SRC/uvm_pkg.sv" ]]; then
+  echo "uvmv: no uvm_pkg.sv under $UVM_SRC (set UVM_HOME)" >&2; exit 1
+fi
+if [[ $# -eq 0 ]]; then
+  sed -n '2,30p' "$0" | sed 's/^# \?//'; exit 0
+fi
+
+exec verilator \
+  --binary --timing -Wno-fatal -Wno-WIDTH -Wno-CASTCONST \
+  --build-jobs "$JOBS" \
+  --vpi \
+  -I"$UVM_SRC" "$UVM_SRC/uvm_pkg.sv" \
+  "$UVM_SRC/dpi/uvm_dpi.cc" -CFLAGS "-I$UVM_SRC/dpi -DVERILATOR" \
+  "$@"

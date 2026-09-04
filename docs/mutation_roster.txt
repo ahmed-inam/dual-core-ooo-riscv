@@ -1,0 +1,76 @@
+# Mutation roster. Rows for mutations RUN by scripts/run_mutations.sh are
+# rewritten by it at the end of a campaign; rows it did not run are preserved.
+#
+# WHY THIS FILE EXISTS. The campaign tally lived in a scratchpad log outside the
+# repository and in two closing documents, which stated it two different ways
+# ("20 run: 17 caught, 2 inert, 0 missed" -- 19 of 20) while the log itself said
+# "caught=18 missed=2". THREE ARTEFACTS, THREE ANSWERS, NO OWNER, and no way to
+# check any of them once the scratchpad was gone. Same shape as the gate roster
+# nobody diffed and the checker inventory nothing re-derived. This is the
+# authority; scripts/docs_audit.sh derives the shipped figure from it.
+#
+# verdict
+#   CAUGHT   a checker or a gate criterion went red, and `evidence` names it
+#   INERT    the mutation changed no observable behaviour, so nothing COULD
+#            fire. A stimulus gap, not a checker gap. Not a miss.
+#   MISSED   the design was broken, the behaviour changed, and the battery
+#            stayed green. THE FINDING step 7 exists to produce.
+#   NOT-RUN  in the table and never executed
+#
+# MISSED vs INERT IS DECIDED BY MEASURING THE MUTANT, NEVER BY THE GATE RESULT.
+# run_mutations.sh can only write CAUGHT or MISSED, because "the mutation changed
+# nothing observable" is a claim about the mutant. A MISSED row is promoted by
+# hand and the row must carry the measurement that justifies it -- a coverage
+# record, a counter, a direct run. m2, m5, m11 and m22 are all promotions, and
+# every one names its evidence.
+#
+# evidence
+#   the checker's own message where one was recorded, else the gate criterion
+#   that failed. `<gates only>` means the run escalated to the full battery
+#   before scripts/run_mutations.sh learned to recover per-gate logs, so the
+#   attribution is an INFERENCE from which gates reddened, not a measurement.
+#   Those are the rows to re-run first.
+#
+#   Five rows name a campaign log rather than carrying the harness's own
+#   output verbatim: they were produced before escalation_why() RECORDED what it
+#   printed, so the console had the evidence and this file said `<gates only>`.
+#   The logs named are saved artefacts and contain the checker's own words. The
+#   recorder is fixed; the next run of any of these overwrites the row with its
+#   own output.
+#
+# NOTE: THE NAMED LOGS BELOW DO NOT EXIST. Five rows cite
+# `campaign4.log`, `campaign5.log` or `tier1.log`; none of those files is
+# anywhere on this machine, and obj_uvm/mut_<gate>.log -- where the rest lived --
+# is overwritten by the next gate of the next mutation. Every credit in this file
+# was a transcription with no surviving primary source.
+#
+# A campaign writes obj_uvm/evidence/<mutation>/<gate>.log as it runs, and that
+# directory is not committed, so no primary source for any row below survives in
+# the repository. Each row is a transcription until its campaign is re-run and
+# the log kept beside it. An earlier note here named docs/evidence/
+# and snapshot.sh; neither existed.
+#
+# id|verdict|evidence
+m10_rob_viol_slot|CAUGHT|uvm_min_sl <- [SB_RETIRE] 56 load deferrals exceeds the ceiling
+m11_rob_slot1_serialise|INERT|re-run after the exit-2 patch: 85/0, nothing red
+m12_core_half_align|CAUGHT|uvm_misalign <- mismatches=104
+m13_csr_mpp_writable|CAUGHT|uvm_csrprobe <- [SYS_MON];uvm_csrprobe <- [SYS_MON] uvm_ral <- [SYS_MON];uvm_ral <- [RAL] hart 0: mstatus.mpp is declared RO with reset
+m14_axi_axlen_short|CAUGHT|uvm_base <- no verdict (timeout). NOT the RLAST checker
+m15_branch_no_tgt_align|CAUGHT|uvm_misalign <- mismatches=170
+m16_lsq_no_violation|CAUGHT|uvm_min_sl <- [SB_RETIRE] 56 load deferrals exceeds the ceiling
+m17_core_word_align|CAUGHT|uvm_misalign <- mismatches=212
+m18_dcache_wb_clean|CAUGHT|[SB_COH] WRITEBACK of line 00000100, which NO hart was ever granted E or M
+m19_core_rvfi_order|CAUGHT|uvm_base <- mismatches=44;uvm_base .. [evidence] [RVFI_MON] hart 1 order not increasing uvm_base <- mismatches=44;uvm_base .. [evidence] [RVFI_MON] hart 1 order
+m1_lrsc_no_snoop_clear|CAUGHT|uvm_lrsc_qtrap <- [COV_LRSC] hart 0: SC SUCCEEDED after its reservation was killed; also [SYS_MON]. (recovered from the battery logs; console record: scratchpad logs/campaign4.log)
+m20_coh_snoop_none|CAUGHT|uvm_share <- no verdict (timeout or crash);uvm_share <- UVM_FATAL uvm_share .. [evidence] [SB_COH] line 00003100 hart 0: cache tag_q holds;uvm_share .. [evidenc
+m21_core_rvfi_trap_novalid|CAUGHT|uvm_base <- mismatches=208;uvm_base <- CHECKED=44 below floor 200 uvm_base .. [evidence] [RVFI_MON] hart 0: rvfi_trap asserted
+m22_coh_install_no_grant|INERT|dcache.sv:895 inner ternary reads cond_then=0 / cond_else=121 in the union: acq_shared_q is NEVER 1 on a write-intent fill, because a GetM invalidates the sharers. The deleted LINE_S arm is a defensive branch the protocol makes unreachable (the RTL comment says so). Battery 86/0, nothing red -- correctly, there is nothing to see. NOT a checker gap.
+m23_mesi_s_reports_kept|MISSED|A GENUINE MISS, and the cause is the same eviction-resync that blinded SWMR. The cache correctly goes to LINE_I; only the BUS REPORT is wrong (BtoB = 'I kept my copy'). The model therefore records h1=S, the backdoor sees model>cache, infers a SILENT EVICTION and resyncs h1 down to I -- absorbing the lie. A false eviction inference swallows any snoop response that OVER-REPORTS retention. Caught only by the unit testbenches tb_dcache_snoop and tb_mesi_ctrl; the UVM environment cannot see it. Battery 83/3. (tier1.log)
+m2_lrsc_arm_always|INERT|only tb_lrsc_unit, a UNIT testbench; no UVM checker. Measured no-op
+m3_lrsc_sc_always_ok|CAUGHT|[COV_LRSC] hart 0/1: SC SUCCEEDED after its reservation was killed, on 5 gates (lrsc_trap hazx lrscx lrsc_qtrap lrsc_conflict). (campaign4.log)
+m4_trap_clr_tied|CAUGHT|uvm_lrsc_qtrap <- [SYS_MON]
+m5_lrsc_refresh_no_hit|INERT|full battery 87/0. The S6-6.9 REFRESH arm is never taken
+m6_mesi_s_no_inv|CAUGHT|uvm_stress <- [SYS_MON];uvm_stress .. [evidence] [SB_COH] SWMR violated uvm_stress .. [evidence] [SB_COH] line 00003120 hart 1: cache tag_q holds;uvm_stress .. 
+m7_mesi_m_no_wb|CAUGHT|uvm_share, uvm_excl <- no verdict (timeout). Kills the run
+m8_coh_shared_bit|CAUGHT|[SYS_MON] + [SB_RETIRE] 59850 load deferrals exceeds the ceiling. NO SB_COH design error at all -- the only SB_COH output is the anti-vacuous quiescence floor. (campaign5.log)
+m9_dcache_store_gets|CAUGHT|[COV_COH] C1 EQUIVALENCE on 20 gates; also [SB_COH] cache tag_q holds and [COV_COH] implying it held. NO 'SWMR violated'. (campaign4.log)

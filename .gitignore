@@ -1,0 +1,22 @@
+# asm/*.hex and asm/*.elf are NOT ignored: nothing regenerates them, so they are
+# source here, and committing them is what lets the battery run without a
+# RISC-V toolchain.
+
+obj_*/
+build/
+*.log
+coverage.dat
+
+# root copies made by run_regression.sh, never the committed programs under asm/
+/*.hex
+
+# written by gen_random_prog.py, gate uvm_random, and run_compliance_ooo.sh
+asm/rand/
+asm/obj_*/
+asm/*.bin
+
+.DS_Store
+*.swp
+__pycache__/
+*.pyc
+

@@ -1,0 +1,18 @@
+`verilator_config
+// Keeps --coverage-line pointed at the design. Without this it also instruments
+// the UVM library and the testbench, and the number stops meaning anything.
+// This is a blacklist by necessity: coverage_on cannot re-enable what a
+// wildcard coverage_off has already disabled.
+
+// the bundled std package that ships with the tool
+coverage_off -file "*/include/verilated_std.sv"
+coverage_off -file "*verilated_std.sv"
+
+// the UVM class library, wherever UVM_HOME points
+coverage_off -file "*/uvm/src/*"
+coverage_off -file "*uvm_pkg.sv"
+coverage_off -file "*uvm_macros.svh"
+
+// this testbench: agents, scoreboards, coverage models, the harness itself
+coverage_off -file "tb/*"
+coverage_off -file "*/tb/*"

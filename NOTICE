@@ -1,0 +1,59 @@
+# Third-party material
+
+Copyright 2026 Ahmed Inam Chowdhury. This project is licensed under the
+Apache License, Version 2.0; see LICENSE.
+
+Everything here is original work except as recorded below.
+
+The RTL, the testbenches, the harnesses and the test programs were written for
+this project. 
+
+## 1. riscv-tests, in asm/compliance/hex/
+
+The 63 compliance programs there (the .hex files and their .tohost address
+files) are compiled artefacts of the riscv-tests suite, upstream at
+https://github.com/riscv-software-src/riscv-tests
+
+They are committed in built form so this repository can be cloned and its
+battery run without a RISC-V cross-toolchain present.
+asm/compliance/run_compliance_ooo.sh records which upstream tests are excluded
+and why. The upstream licence follows in full, and applies to those artefacts
+unchanged.
+
+```
+Copyright (c) 2012-2015, The Regents of the University of California (Regents).
+All Rights Reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright
+   notice, this list of conditions and the following disclaimer in the
+   documentation and/or other materials provided with the distribution.
+3. Neither the name of the Regents nor the
+   names of its contributors may be used to endorse or promote products
+   derived from this software without specific prior written permission.
+
+IN NO EVENT SHALL REGENTS BE LIABLE TO ANY PARTY FOR DIRECT, INDIRECT,
+SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES, INCLUDING LOST PROFITS, ARISING
+OUT OF THE USE OF THIS SOFTWARE AND ITS DOCUMENTATION, EVEN IF REGENTS HAS
+BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+REGENTS SPECIFICALLY DISCLAIMS ANY WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE. THE SOFTWARE AND ACCOMPANYING DOCUMENTATION, IF ANY, PROVIDED
+HEREUNDER IS PROVIDED "AS IS". REGENTS HAS NO OBLIGATION TO PROVIDE
+MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+```
+
+## 2. Spike (riscv-isa-sim)
+
+tb/uvm/ref/spike_dpi.cc is original code that links against Spike's libriscv at
+build time. Spike is cloned into the container by the Dockerfile and is not
+redistributed here.
+
+## 3. Accellera UVM
+
+The UVM class library is downloaded and built inside the container image. It is
+not redistributed here.
